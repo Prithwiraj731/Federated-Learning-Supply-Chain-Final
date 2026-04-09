@@ -1,0 +1,7 @@
+Control Tower:
+python -m streamlit run app.py
+
+Client Node Example:
+set SC_CLIENT_ID=0
+set SC_NODE_PORT=8800
+python -m streamlit run client_app.py --server.port 8502
