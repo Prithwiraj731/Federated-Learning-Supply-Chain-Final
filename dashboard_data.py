@@ -41,8 +41,12 @@ def _map_dataset_files(dataset_dir: str, num_clients: int) -> Dict[str, str]:
             remaining_files.append(file_path)
 
     unassigned_clients = [str(cid) for cid in range(num_clients) if str(cid) not in mapped_files]
-    for cid, file_path in zip(unassigned_clients, remaining_files):
-        mapped_files[cid] = file_path
+    for cid in unassigned_clients:
+        idx = int(cid)
+        if idx < len(remaining_files):
+            mapped_files[cid] = remaining_files[idx]
+        elif len(remaining_files) > 0:
+            mapped_files[cid] = remaining_files[-1]
 
     return mapped_files
 

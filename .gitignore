@@ -1,1 +1,7 @@
 models/
+__pycache__/
+venv/
+.streamlit/
+sc50_logs/
+DATASETS/*__upload__current.*
+*.pyc

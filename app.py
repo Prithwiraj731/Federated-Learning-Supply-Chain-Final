@@ -8,7 +8,7 @@ import pandas as pd
 import streamlit as st
 
 from dashboard_data import build_client_bundles, infer_client_catalog, load_node_registry, save_node_registry
-from main import FedSim, SCConfig, SupplyChainDataManager, get_device, llm_generate, load_model, to_serializable
+from main import FedSim, SCConfig, SupplyChainDataManager, get_device, llm_generate, load_model, to_serializable, optimize
 from privacy_network import (
     ensure_control_tower_server,
     get_control_tower_server_state,
@@ -39,26 +39,25 @@ st.set_page_config(
 st.markdown(
     """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Manrope:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-    --bg-0: #0b0f19;
-    --bg-1: #101624;
-    --card: #151c2e;
-    --card-hover: #1a2338;
-    --line: #263354;
-    --text: #e8ecf4;
-    --muted: #94a3c0;
-    --primary: #6c5ce7;
-    --primary-2: #7c6ff7;
-    --accent: #f0b429;
-    --success: #00e676;
+    --bg-0: #051F20;
+    --bg-1: #0B2B26;
+    --card: #0B2B26;
+    --card-hover: #163832;
+    --line: #163832;
+    --text: #DAF1DE;
+    --muted: #8EB69B;
+    --primary: #235347;
+    --primary-2: #163832;
+    --accent: #8EB69B;
+    --success: #1ed760;
     --danger: #ff5252;
-    --glow: rgba(108, 92, 231, 0.35);
 }
 
 html, body, [class*="css"] {
-    font-family: 'Manrope', sans-serif;
+    font-family: 'Inter', sans-serif;
     color: var(--text) !important;
     background-color: var(--bg-0) !important;
 }
@@ -68,17 +67,18 @@ p, span, label, div {
 }
 
 h1, h2, h3 {
-    font-family: 'Space Grotesk', sans-serif;
-    letter-spacing: -0.02em;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: -0.01em;
     color: #ffffff !important;
+    font-weight: 600;
 }
 
 .stApp {
-    background: linear-gradient(165deg, var(--bg-0) 0%, var(--bg-1) 50%, #0d1225 100%);
+    background: var(--bg-0);
 }
 
 section[data-testid="stSidebar"] {
-    background: #0e1322 !important;
+    background: var(--bg-1) !important;
     border-right: 1px solid var(--line) !important;
 }
 
@@ -97,35 +97,32 @@ section[data-testid="stSidebar"] .stTextInput label {
 
 .block-container {
     max-width: 1280px;
-    padding-top: 1.2rem;
+    padding-top: 1.5rem;
     padding-bottom: 2rem;
 }
 
 .hero {
     border: 1px solid var(--line);
-    border-radius: 22px;
-    padding: 22px 24px;
-    background: linear-gradient(135deg, #151c2e 0%, #1a2540 100%);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255,255,255,0.04);
-    margin-bottom: 1rem;
+    border-radius: 8px;
+    padding: 24px;
+    background: var(--bg-1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.2rem;
 }
 
 .hero h1 {
     margin: 0;
-    font-size: 2.05rem;
-    background: linear-gradient(135deg, #c4b5fd, #6c5ce7, #a78bfa);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    font-size: 1.8rem;
+    color: var(--text) !important;
 }
 
 .hero p {
-    margin: 0.45rem 0 0;
+    margin: 0.5rem 0 0;
     color: var(--muted) !important;
 }
 
 .pill-row {
-    margin-top: 0.8rem;
+    margin-top: 1rem;
     display: flex;
     gap: 0.5rem;
     flex-wrap: wrap;
@@ -133,30 +130,30 @@ section[data-testid="stSidebar"] .stTextInput label {
 
 .pill {
     border: 1px solid var(--line);
-    background: rgba(108, 92, 231, 0.12);
-    border-radius: 999px;
-    font-size: 0.84rem;
-    font-weight: 600;
-    padding: 0.35rem 0.7rem;
-    color: #c4b5fd !important;
+    background: var(--card-hover);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 0.4rem 0.8rem;
+    color: var(--accent) !important;
 }
 
 .panel {
     border: 1px solid var(--line);
-    border-radius: 20px;
-    padding: 18px;
+    border-radius: 8px;
+    padding: 20px;
     background: var(--card);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-    animation: riseIn .42s ease;
-    margin-bottom: 1rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    animation: riseIn .4s ease;
+    margin-bottom: 1.2rem;
 }
 
 .node-card {
     border: 1px solid var(--line);
-    border-radius: 20px;
-    padding: 18px;
-    background: linear-gradient(180deg, rgba(21,28,46,0.98), rgba(17,24,39,0.98));
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+    border-radius: 8px;
+    padding: 20px;
+    background: var(--bg-1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     min-height: 230px;
 }
 
@@ -168,9 +165,8 @@ section[data-testid="stSidebar"] .stTextInput label {
 }
 
 .node-title {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 1.04rem;
-    font-weight: 700;
+    font-size: 1.05rem;
+    font-weight: 600;
 }
 
 .node-muted {
@@ -182,55 +178,52 @@ section[data-testid="stSidebar"] .stTextInput label {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    border-radius: 999px;
-    padding: 0.3rem 0.7rem;
+    border-radius: 6px;
+    padding: 0.3rem 0.6rem;
     font-size: 0.8rem;
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .node-status.online {
-    background: rgba(0, 230, 118, 0.14);
+    background: rgba(30, 215, 96, 0.1);
     color: var(--success) !important;
 }
 
 .node-status.offline {
-    background: rgba(255, 82, 82, 0.14);
+    background: rgba(255, 82, 82, 0.1);
     color: var(--danger) !important;
 }
 
 .node-metric {
-    margin-top: 0.85rem;
-    padding-top: 0.85rem;
-    border-top: 1px solid rgba(148, 163, 192, 0.14);
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--line);
 }
 
 @keyframes riseIn {
-    from { opacity: 0; transform: translateY(6px); }
+    from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0px); }
 }
 
 .stButton > button {
-    border-radius: 12px;
-    border: 1px solid transparent;
-    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+    border-radius: 6px;
+    border: 1px solid var(--line) !important;
+    background: var(--primary) !important;
     color: #ffffff !important;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-    transition: all 0.22s ease;
-    box-shadow: 0 6px 20px var(--glow);
+    font-weight: 600;
+    transition: all 0.2s ease;
 }
 
 .stButton > button:hover {
-    transform: translateY(-2px);
-    background: linear-gradient(135deg, var(--primary-2), #9d7ff7);
-    box-shadow: 0 10px 28px rgba(108, 92, 231, 0.5);
+    background: var(--card-hover) !important;
+    border-color: var(--accent) !important;
 }
 
 div[data-testid="stMetric"] {
     border: 1px solid var(--line);
     background: var(--card);
-    border-radius: 14px;
-    padding: 0.35rem 0.55rem;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
 }
 
 div[data-testid="stMetricLabel"] p {
@@ -238,56 +231,76 @@ div[data-testid="stMetricLabel"] p {
 }
 
 div[data-baseweb="tab-list"] {
-    gap: 0.4rem;
+    gap: 0.5rem;
 }
 
 div[data-baseweb="tab-list"] button {
     background: var(--card);
     border: 1px solid var(--line);
-    border-radius: 10px;
-    font-family: 'Space Grotesk', sans-serif;
-    font-weight: 700;
+    border-radius: 6px;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
     color: var(--text) !important;
     transition: all 0.2s ease;
 }
 
 div[data-baseweb="tab-list"] button[aria-selected="true"] {
-    color: #c4b5fd !important;
+    color: var(--accent) !important;
     border-color: var(--primary);
+    background: var(--primary-2);
 }
 
 div[data-baseweb="tab-highlight"] {
     background: var(--primary);
     height: 3px;
-    border-radius: 999px;
+    border-radius: 6px;
 }
 
 .stTextInput > div > div > input,
 .stNumberInput > div > div > input {
-    background-color: #1a2338 !important;
+    background-color: var(--bg-0) !important;
     color: var(--text) !important;
     border-color: var(--line) !important;
+    border-radius: 6px;
 }
 
 .stSelectbox > div > div,
 div[data-baseweb="select"] > div {
-    background-color: #1a2338 !important;
+    background-color: var(--bg-0) !important;
     color: var(--text) !important;
     border-color: var(--line) !important;
+    border-radius: 6px;
 }
 
 .stExpander {
     border-color: var(--line) !important;
     background-color: var(--card) !important;
+    border-radius: 8px !important;
 }
 
+/* --- AI Chat Assistant styling --- */
 .stChatInput > div {
-    background-color: #1a2338 !important;
+    background-color: var(--bg-0) !important;
     border-color: var(--line) !important;
+    border-radius: 8px;
+}
+
+[data-testid="stChatMessage"] {
+    background-color: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+[data-testid="stChatMessage"] [data-testid="chatAvatarIcon-user"] {
+    background-color: var(--primary);
+}
+[data-testid="stChatMessage"] [data-testid="chatAvatarIcon-assistant"] {
+    background-color: var(--card-hover);
 }
 
 .stProgress > div > div > div {
-    background: linear-gradient(90deg, var(--primary), #a78bfa) !important;
+    background: var(--primary) !important;
 }
 </style>
 """,
@@ -683,6 +696,14 @@ with tab_nodes:
                 f"Latest upload from client {latest_upload['client_id']}: {latest_upload['file_name']} "
                 f"saved to {latest_upload['saved_path']} at {latest_upload['received_at']}."
             )
+            st.write("**New data available!** Run a new Federated Learning round directly from here.")
+            if st.session_state.model is None:
+                st.warning("⚠️ Please load the local model in the **Control Center** tab first.")
+            if st.button("🚀 Run Federated Learning & Sync to Clients", use_container_width=True, disabled=st.session_state.model is None):
+                run_simulation_pipeline()
+                sync_results = sync_online_nodes()
+                success_count = sum(1 for item in sync_results if item["status"] == "synced")
+                st.success(f"Secure bundle sync complete. Successful deliveries: {success_count}.")
         else:
             st.info("No client raw-file uploads have been received yet.")
         st.markdown("</div>", unsafe_allow_html=True)
@@ -727,6 +748,56 @@ with tab_results:
         primary_client = st.session_state.primary_client_summary or {}
 
         st.markdown("<div class='panel'>", unsafe_allow_html=True)
+        st.subheader("Human in the Loop: Live Adjustment")
+        st.caption("Change the quantity below to instantly recalculate financials, emissions, and AI Insights.")
+        
+        c_input, c_btn = st.columns([2, 1])
+        with c_input:
+            new_qty = st.number_input(
+                "Adjust Order Quantity",
+                value=int(opt["optimized_qty"]),
+                min_value=0,
+                step=1,
+            )
+            
+        # Recalculate dynamic optimize if user changes it
+        dynamic_opt = opt
+        if new_qty != int(opt["optimized_qty"]) and primary_client:
+            dynamic_opt = optimize(
+                forecast=forecast,
+                inventory=50,
+                emission_factor=primary_client.get("emission_factor", 1.5),
+                risk=primary_client.get("risk_level", 0.1),
+                override_qty=new_qty,
+            )
+            st.info(f"⚠️ Viewing adjusted projection for **{new_qty} units**. (System originally recommended {opt['optimized_qty']} units).")
+
+        with c_btn:
+            st.write("")
+            st.write("") # Spacer alignment
+            if st.button("Approve Decision", use_container_width=True):
+                if new_qty != opt["optimized_qty"]:
+                    log_entry = {
+                        "event": "override",
+                        "new": int(new_qty),
+                        "original": opt["optimized_qty"],
+                        "product": SCConfig.PRODUCT_NAME,
+                    }
+                else:
+                    log_entry = {
+                        "event": "approved",
+                        "qty": opt["optimized_qty"],
+                        "product": SCConfig.PRODUCT_NAME,
+                    }
+
+                os.makedirs(SCConfig.LOG_DIR, exist_ok=True)
+                with open(os.path.join(SCConfig.LOG_DIR, "decision_log.json"), "a", encoding="utf-8") as handle:
+                    handle.write(json.dumps(to_serializable(log_entry)) + "\n")
+
+                st.success(f"Decision for {int(new_qty)} units saved securely. You can now proceed to the next round via the Simulation Control panel.")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown("<div class='panel'>", unsafe_allow_html=True)
         st.subheader("Training Performance")
         train_chart = pd.DataFrame(
             {
@@ -748,14 +819,14 @@ with tab_results:
 
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Forecast", f"{forecast} units")
-        m2.metric("Recommended Order", f"{opt['optimized_qty']} units")
-        m3.metric("Projected Emissions", f"{opt['emissions']:.2f}")
-        m4.metric("Feasible", "Yes" if opt["feasible"] else "No")
+        m2.metric("Order Quantity", f"{dynamic_opt['optimized_qty']} units")
+        m3.metric("Projected Emissions", f"{dynamic_opt['emissions']:.2f}")
+        m4.metric("Feasible", "Yes" if dynamic_opt["feasible"] else "No")
         st.markdown("</div>", unsafe_allow_html=True)
 
         st.markdown("<div class='panel'>", unsafe_allow_html=True)
         st.subheader("Financial Projection")
-        fin = opt["financials"]
+        fin = dynamic_opt["financials"]
         c1, c2 = st.columns([1, 2], gap="large")
         with c1:
             st.metric("Projected Revenue", f"${fin['revenue']:.2f}")
@@ -785,62 +856,25 @@ with tab_results:
                         "role": "system",
                         "content": (
                             f"You are a supply chain expert. Product: {SCConfig.PRODUCT_NAME}. "
-                            f"Forecast: {forecast}. Emissions: {opt['emissions']:.2f}."
+                            f"Forecast: {forecast}. Emissions: {dynamic_opt['emissions']:.2f}."
                         ),
                     }
                     user_msg = {
                         "role": "user",
                         "content": (
-                            f"Recommended order quantity is {opt['optimized_qty']}. "
-                            "Provide a concise strategic recommendation."
+                            f"The current order quantity is set to {dynamic_opt['optimized_qty']}. "
+                            "Provide a concise strategic recommendation regarding this decision."
                         ),
                     }
                     insight = llm_generate(
                         [system_msg, user_msg],
                         st.session_state.tokenizer,
                         st.session_state.model,
-                        max_tokens=140,
+                        max_tokens=800,
                     )
                     st.success(insight)
                 except Exception as exc:
                     st.error(f"AI insight failed: {exc}")
-        st.markdown("</div>", unsafe_allow_html=True)
-
-        st.markdown("<div class='panel'>", unsafe_allow_html=True)
-        st.subheader("Human in the Loop")
-        with st.form("override_form"):
-            new_qty = st.number_input(
-                "Adjust Order Quantity",
-                value=int(opt["optimized_qty"]),
-                step=1,
-            )
-            submitted = st.form_submit_button("Approve and Run Next Round")
-
-            if submitted:
-                if new_qty != opt["optimized_qty"]:
-                    log_entry = {
-                        "event": "override",
-                        "new": int(new_qty),
-                        "original": opt["optimized_qty"],
-                        "product": SCConfig.PRODUCT_NAME,
-                    }
-                    st.warning(f"Order quantity overridden to {new_qty}.")
-                else:
-                    log_entry = {
-                        "event": "approved",
-                        "qty": opt["optimized_qty"],
-                        "product": SCConfig.PRODUCT_NAME,
-                    }
-                    st.success("AI recommendation approved.")
-
-                os.makedirs(SCConfig.LOG_DIR, exist_ok=True)
-                with open(os.path.join(SCConfig.LOG_DIR, "decision_log.json"), "a", encoding="utf-8") as handle:
-                    handle.write(json.dumps(to_serializable(log_entry)) + "\n")
-
-                st.toast("Decision saved. Running next round...")
-                time.sleep(0.8)
-                st.session_state.run_simulation = True
-                st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
 
@@ -891,7 +925,7 @@ with tab_chat:
                         messages,
                         st.session_state.tokenizer,
                         st.session_state.model,
-                        max_tokens=170,
+                        max_tokens=800,
                     )
                 st.session_state.messages.append({"role": "assistant", "content": response})
                 st.rerun()

@@ -1,4 +1,4 @@
-# Federated Supply Chain Milk Phase 2
+# Federated Supply Chain Control Tower (Final Project)
 
 This project is a beginner-friendly demo of a **federated learning supply chain control tower** for milk distribution.
 

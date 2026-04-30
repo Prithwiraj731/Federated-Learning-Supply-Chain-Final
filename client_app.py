@@ -20,75 +20,128 @@ def apply_theme() -> None:
     st.markdown(
         """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Manrope:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-    --bg-0: #07121d;
-    --bg-1: #0d1c2d;
-    --card: rgba(18, 34, 52, 0.92);
-    --line: #27425f;
-    --text: #eef5fb;
-    --muted: #99b3cb;
-    --primary: #35c2ff;
+    --bg-0: #051F20;
+    --bg-1: #0B2B26;
+    --card: #0B2B26;
+    --card-hover: #163832;
+    --line: #163832;
+    --text: #DAF1DE;
+    --muted: #8EB69B;
+    --primary: #235347;
+    --primary-2: #163832;
+    --accent: #8EB69B;
     --success: #1ed760;
-    --danger: #ff5d6c;
+    --danger: #ff5252;
 }
 
 html, body, [class*="css"] {
-    font-family: 'Manrope', sans-serif;
+    font-family: 'Inter', sans-serif;
     color: var(--text) !important;
-    background: var(--bg-0) !important;
+    background-color: var(--bg-0) !important;
 }
 
 h1, h2, h3 {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: -0.01em;
     color: #ffffff !important;
+    font-weight: 600;
 }
 
 .stApp {
-    background: radial-gradient(circle at top right, rgba(53,194,255,0.15), transparent 28%), linear-gradient(180deg, var(--bg-0), var(--bg-1));
+    background: var(--bg-0);
 }
 
 .hero, .panel {
     border: 1px solid var(--line);
     background: var(--card);
-    border-radius: 20px;
-    box-shadow: 0 12px 30px rgba(0,0,0,0.18);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
 .hero {
     padding: 24px;
-    margin-bottom: 1rem;
+    margin-bottom: 1.2rem;
 }
 
 .hero p {
     color: var(--muted) !important;
+    margin-top: 0.5rem;
 }
 
 .panel {
-    padding: 18px;
-    margin-bottom: 1rem;
+    padding: 20px;
+    margin-bottom: 1.2rem;
 }
 
 .node-strip {
     display: flex;
     gap: 0.8rem;
     flex-wrap: wrap;
-    margin-top: 0.9rem;
+    margin-top: 1rem;
 }
 
 .chip {
-    padding: 0.42rem 0.8rem;
-    border-radius: 999px;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
     border: 1px solid var(--line);
-    background: rgba(53,194,255,0.08);
-    color: var(--text);
-    font-size: 0.86rem;
-    font-weight: 700;
+    background: var(--card-hover);
+    color: var(--accent);
+    font-size: 0.85rem;
+    font-weight: 500;
 }
 
 .status-online { color: var(--success) !important; }
 .status-offline { color: var(--danger) !important; }
+
+/* General button styling to match app.py */
+.stButton > button {
+    border-radius: 6px;
+    border: 1px solid var(--line) !important;
+    background: var(--primary) !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.stButton > button:hover {
+    background: var(--card-hover) !important;
+    border-color: var(--accent) !important;
+}
+
+div[data-testid="stMetric"] {
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+}
+
+div[data-testid="stMetricLabel"] p {
+    color: var(--muted) !important;
+}
+
+/* --- AI Chat Assistant styling --- */
+.stChatInput > div {
+    background-color: var(--bg-0) !important;
+    border-color: var(--line) !important;
+    border-radius: 8px;
+}
+
+[data-testid="stChatMessage"] {
+    background-color: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+[data-testid="stChatMessage"] [data-testid="chatAvatarIcon-user"] {
+    background-color: var(--primary);
+}
+[data-testid="stChatMessage"] [data-testid="chatAvatarIcon-assistant"] {
+    background-color: var(--card-hover);
+}
 </style>
 """,
         unsafe_allow_html=True,
@@ -211,6 +264,11 @@ bundle = load_secure_bundle(bundle_dir_for_client(selected_client_id), secret=ge
 local_df = load_raw_client_frame(selected_client_id)
 latest_local = local_df.iloc[-1]
 
+st.sidebar.markdown("---")
+if st.sidebar.button("🔄 Refresh Client Dashboard", use_container_width=True):
+    st.rerun()
+st.sidebar.info("📱 **Mobile Access:** Run this app with `--server.address 0.0.0.0` and open your phone's browser to this computer's local IP (e.g., `http://192.168.1.X:8502`).")
+
 model_state = "Loaded" if st.session_state.client_model else "Not loaded"
 sync_state = "Secure bundle ready" if bundle else "Awaiting control tower sync"
 status_class = "status-online" if node_state else "status-offline"
@@ -261,6 +319,8 @@ with tab_ops:
 with tab_market:
     if not bundle:
         st.info("No secure benchmark bundle has been synced yet. Start the control tower, run a simulation, and push client bundles from the Node Network tab.")
+        if st.button("🔄 Check for New Insights", use_container_width=True):
+            st.rerun()
     else:
         client = bundle["client"]
         market = bundle["market"]
@@ -365,7 +425,7 @@ with tab_ai:
                     ],
                     st.session_state.client_tokenizer,
                     st.session_state.client_model,
-                    max_tokens=180,
+                    max_tokens=800,
                 )
                 st.success(response)
             except Exception as exc:

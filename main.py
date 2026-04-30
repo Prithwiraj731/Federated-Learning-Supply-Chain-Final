@@ -249,6 +249,11 @@ def _messages_to_prompt(messages: List[Dict[str, str]]) -> str:
     return "\n".join(lines)
 
 
+def _strip_think_tags(text: str) -> str:
+    """Remove <think>...</think> reasoning blocks from Qwen3 model output."""
+    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+
+
 def llm_generate(prompt, tokenizer, model, max_tokens=200, temperature=0.7):
     if model is None:
         raise ValueError("Model is not loaded. Please load the GGUF model first.")
@@ -263,7 +268,8 @@ def llm_generate(prompt, tokenizer, model, max_tokens=200, temperature=0.7):
             repeat_penalty=1.1,
         )
         content = out["choices"][0]["message"]["content"]
-        return content.strip() if isinstance(content, str) else str(content)
+        content = content.strip() if isinstance(content, str) else str(content)
+        return _strip_think_tags(content)
     except Exception:
         # Fallback for runtimes that do not expose chat completion helpers
         text_prompt = _messages_to_prompt(messages)
@@ -275,7 +281,7 @@ def llm_generate(prompt, tokenizer, model, max_tokens=200, temperature=0.7):
             repeat_penalty=1.1,
             stop=["\nUser:", "\nSystem:"],
         )
-        return out["choices"][0]["text"].strip()
+        return _strip_think_tags(out["choices"][0]["text"].strip())
 
 
 # =====================================================
@@ -588,6 +594,7 @@ def optimize(
     inventory,
     emission_factor,
     risk,
+    override_qty=None,
     carbon_cap=None,
     selling_price=None,
     cost_price=None,
@@ -602,7 +609,10 @@ def optimize(
     safety_stock = int(forecast * (0.1 + risk))
     
     # Order Qty logic
-    qty = max(0, forecast + safety_stock - inventory)
+    if override_qty is not None:
+        qty = override_qty
+    else:
+        qty = max(0, forecast + safety_stock - inventory)
 
     # Emissions
     emissions = float(qty * emission_factor)
